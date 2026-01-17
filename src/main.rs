@@ -1,6 +1,9 @@
 mod event;
+mod file_watcher;
+
 
 use std::env;
+use std::time::Duration;
 use lazy_static::lazy_static;
 
 use serenity::all::{ChannelId, Ready};
@@ -12,6 +15,7 @@ use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
 use crate::event::Event;
+use crate::file_watcher::file_watcher;
 
 struct Handler;
 
@@ -77,9 +81,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Client::builder(&token, intents).event_handler(Handler).await.expect("Err creating client");
 
     // Start listening for events by starting a single shard
-    if let Err(why) = client.start().await {
-        println!("Client error: {why:?}");
-    }
+    let handle1 = tokio::spawn(async move {
+        if let Err(why) = client.start().await {
+            println!("Client error: {why:?}");
+        }
+    });
+    
+    let handle2 = tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(3)).await;
+
+        let sender = EVENT_SENDER.read().await;
+        let Some(sender) = sender.clone() else {
+            eprintln!("Error: sender does not exist");
+            return;
+        };
+
+        if let Err(e) = file_watcher(sender).await {
+            println!("Watcher error: {e:?}");
+        }
+    });
+
+    let _ = tokio::join!(handle1, handle2);
 
     Ok(())
 }
