@@ -1,39 +1,62 @@
+mod event;
+
 use std::env;
+use lazy_static::lazy_static;
 
 use serenity::all::{ChannelId, Ready};
 use serenity::async_trait;
 use serenity::model::channel::Message;
 use serenity::prelude::*;
 
+use tokio::sync::mpsc;
+use tokio::sync::RwLock;
+
+use crate::event::Event;
+
 struct Handler;
+
+lazy_static! {
+    static ref EVENT_SENDER: RwLock<Option<mpsc::Sender<Event>>> = RwLock::new(None);
+}
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.content == "!ping" {
-            if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!").await {
-                println!("Error sending message: {why:?}");
-            }
-        }
-        else if msg.content == "!channel_id" {
-            let send_msg = format!("채널 ID : {}", msg.channel_id);
-            if let Err(why) = msg.channel_id.say(&ctx.http, send_msg).await {
-                println!("Error sending message: {why:?}");
-            }
-        }
-        else if msg.content == "엄준식" {
-            println!("채널 ID : {}", msg.channel_id);
-
-            let send_msg = format!("엄준식은 살아있다");
-            if let Err(why) = msg.channel_id.say(&ctx.http, send_msg).await {
-                println!("Error sending message: {why:?}");
-            }
-        }
+        let sender = EVENT_SENDER.read().await;
+        let Some(sender) = sender.clone() else {
+            eprintln!("Error: sender does not exist");
+            return;
+        };
+        
+        sender.send(Event::Chat{
+            channel_id: msg.channel_id, 
+            str: msg.content,
+        }).await.unwrap_or(());
     }
     async fn ready(&self, ctx: Context, _: Ready) {
+        let (sender, mut receiver) = mpsc::channel::<Event>(1024);
+        *EVENT_SENDER.write().await = Some(sender);
+
         let admin_channel_id = ChannelId::new(1462043292937093122u64);
         if let Err(why) = admin_channel_id.say(&ctx.http, "봇 켜짐").await {
             println!("Error!!!");
+        }
+
+        loop {
+            let Some(event) = receiver.recv().await else {
+                break;
+            };
+
+            match event {
+                Event::Chat { channel_id, str } => {
+                    if str == "엄준식" {
+                        let send_msg = format!("엄준식은 살아있다!");
+                        if let Err(why) = channel_id.say(&ctx.http, send_msg).await {
+                            println!("Error sending message: {why:?}");
+                        }
+                    }
+                }
+            }
         }
     }
 }
