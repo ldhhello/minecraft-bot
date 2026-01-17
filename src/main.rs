@@ -32,6 +32,7 @@ impl EventHandler for Handler {
             return;
         };
         
+        println!("aaaa");
         sender.send(Event::Chat{
             channel_id: msg.channel_id, 
             str: msg.content,
@@ -48,8 +49,10 @@ impl EventHandler for Handler {
 
         loop {
             let Some(event) = receiver.recv().await else {
+                println!("oh no");
                 break;
             };
+            println!("aaa");
 
             match event {
                 Event::Chat { channel_id, str } => {
