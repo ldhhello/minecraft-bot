@@ -3,13 +3,15 @@ use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio::sync::mpsc;
 use crate::event::Event;
-use std::{path::Path, sync::mpsc::channel};
+use std::{path::Path};
 use std::env;
 
 pub async fn file_watcher(sender: mpsc::Sender<Event>) -> Result<(), Box<dyn std::error::Error>> {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = mpsc::channel(1024);
     let mut watcher: RecommendedWatcher =
-    Watcher::new(tx, notify::Config::default())?;
+    Watcher::new(move |res| {
+        let _ = tx.blocking_send(res);
+    }, notify::Config::default())?;
 
     let path = &env::var("WATCH_FILE")?;
     let path = Path::new(&path);
@@ -17,15 +19,20 @@ pub async fn file_watcher(sender: mpsc::Sender<Event>) -> Result<(), Box<dyn std
 
     println!("Watching...");
 
-    let mut last_file_size: u64 = 0;
+    let mut last_file_size: u64 = {
+        let mut file = File::open(path).await?;
+        file.seek(std::io::SeekFrom::End(0)).await?
+    };
     let minecraft_channel_id = u64::from_str_radix(
         &env::var("MINECRAFT_CHANNEL_ID")?, 
         10
     )?;
-    println!("{}", minecraft_channel_id);
 
     
-    for res in rx {
+    loop {
+        let Some(res) = rx.recv().await else {
+            return Err("Watch failed".into());
+        };
         match res {
             Ok(event) => {
                 match event.kind {
@@ -46,8 +53,19 @@ pub async fn file_watcher(sender: mpsc::Sender<Event>) -> Result<(), Box<dyn std
                             if sp[4] == "connected:" {
                                 println!("Connect");
                                 let nickname = sp[5];
+                                let nickname = &nickname[0..nickname.len()-1];
                                 let send_msg = format!("{}님이 접속했습니다.", nickname);
-                                sender.send(Event::Chat { 
+                                sender.send(Event::SendChat { 
+                                    channel_id: minecraft_channel_id.into(), 
+                                    str: send_msg,
+                                }).await?;
+                            }
+                            else if sp[4] == "disconnected:" {
+                                println!("Disconnect");
+                                let nickname = sp[5];
+                                let nickname = &nickname[0..nickname.len()-1];
+                                let send_msg = format!("{}님이 퇴장했습니다.", nickname);
+                                sender.send(Event::SendChat { 
                                     channel_id: minecraft_channel_id.into(), 
                                     str: send_msg,
                                 }).await?;

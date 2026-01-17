@@ -63,6 +63,11 @@ impl EventHandler for Handler {
                         }
                     }
                 }
+                Event::SendChat { channel_id, str } => {
+                    if let Err(why) = channel_id.say(&ctx.http, str).await {
+                        println!("Error sending message: {why:?}");
+                    }
+                }
             }
         }
     }
