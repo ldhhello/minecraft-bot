@@ -1,6 +1,6 @@
 mod event;
 mod file_watcher;
-
+mod unique_color;
 
 use std::env;
 use std::time::Duration;
@@ -16,6 +16,7 @@ use tokio::sync::RwLock;
 
 use crate::event::Event;
 use crate::file_watcher::file_watcher;
+use crate::unique_color::get_unique_color;
 
 struct Handler;
 
@@ -40,7 +41,7 @@ impl EventHandler for Handler {
     }
     async fn ready(&self, ctx: Context, _: Ready) {
         let (sender, mut receiver) = mpsc::channel::<Event>(1024);
-        *EVENT_SENDER.write().await = Some(sender);
+        *EVENT_SENDER.write().await = Some(sender.clone());
 
         let admin_channel_id = ChannelId::new(1462043292937093122u64);
         if let Err(why) = admin_channel_id.say(&ctx.http, "봇 켜짐").await {
@@ -75,14 +76,48 @@ impl EventHandler for Handler {
                             println!("Error sending rich message: {e:?}");
                         }
                     }
+                    // else if channel_id == admin_channel_id && str.len() > 0 {
+                    //     let sender = sender.clone();
+                    //     tokio::spawn(async move {
+                    //         sender.send(Event::PlayerConnected { channel_id, nickname: str }).await.unwrap_or(());
+                    //     });
+                    // }
                 }
                 Event::SendChat { channel_id, str } => {
                     if let Err(why) = channel_id.say(&ctx.http, str).await {
                         println!("Error sending message: {why:?}");
                     }
                 },
-                Event::PlayerConnected { channel_id, nickname } => todo!(),
-                Event::PlayerDisconnected { channel_id, nickname } => todo!(),
+                Event::PlayerConnected { channel_id, nickname } => {
+                    let embed = CreateEmbed::new()
+                        .author(CreateEmbedAuthor::new("MinecraftBot"))
+                        .title("입장 알림")
+                        .description(format!("{}님이 입장했습니다!", nickname))
+                        .color(get_unique_color(nickname))
+                        //.thumbnail("https://ldh.monster/images/project/dimimonster.png")
+                        //.field("접속 시간", "2026년 1월 1일 오전 1시 1분", true)
+                        ;
+                    let builder = CreateMessage::new().embed(embed);
+
+                    if let Err(e) = channel_id.send_message(&ctx.http, builder).await {
+                        println!("Error sending rich message: {e:?}");
+                    }
+                },
+                Event::PlayerDisconnected { channel_id, nickname } => {
+                    let embed = CreateEmbed::new()
+                        .author(CreateEmbedAuthor::new("MinecraftBot"))
+                        .title("퇴장 알림")
+                        .description(format!("{}님이 퇴장했습니다!", nickname))
+                        .color(get_unique_color(nickname))
+                        //.thumbnail("https://ldh.monster/images/project/dimimonster.png")
+                        //.field("접속 시간", "2026년 1월 1일 오전 1시 1분", true)
+                        ;
+                    let builder = CreateMessage::new().embed(embed);
+
+                    if let Err(e) = channel_id.send_message(&ctx.http, builder).await {
+                        println!("Error sending rich message: {e:?}");
+                    }
+                },
             }
         }
     }
