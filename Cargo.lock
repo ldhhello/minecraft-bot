@@ -911,6 +911,7 @@ dependencies = [
  "lazy_static",
  "notify",
  "serenity",
+ "time",
  "tokio",
 ]
 

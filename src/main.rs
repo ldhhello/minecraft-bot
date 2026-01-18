@@ -1,6 +1,7 @@
 mod event;
 mod file_watcher;
 mod unique_color;
+mod time_to_string;
 
 use std::env;
 use std::time::Duration;
@@ -16,6 +17,7 @@ use tokio::sync::RwLock;
 
 use crate::event::Event;
 use crate::file_watcher::file_watcher;
+use crate::time_to_string::time_to_string;
 use crate::unique_color::get_unique_color;
 
 struct Handler;
@@ -105,8 +107,8 @@ impl EventHandler for Handler {
                         println!("Error sending rich message: {e:?}");
                     }
                 },
-                Event::PlayerDisconnected { channel_id, nickname } => {
-                    let embed = CreateEmbed::new()
+                Event::PlayerDisconnected { channel_id, nickname , played_time} => {
+                    let mut embed = CreateEmbed::new()
                         .author(CreateEmbedAuthor::new("MinecraftBot"))
                         .title("퇴장 알림")
                         .description(format!("{}님이 퇴장했습니다!", nickname))
@@ -114,6 +116,16 @@ impl EventHandler for Handler {
                         //.thumbnail("https://ldh.monster/images/project/dimimonster.png")
                         //.field("접속 시간", "2026년 1월 1일 오전 1시 1분", true)
                         ;
+                    if played_time > 0 {
+                        embed = embed.field("플레이한 시간", time_to_string(played_time), true);
+                    }
+                    if played_time > 60*60 {
+                        embed = embed.field(
+                            format!("🚨 게임 중독 경고!"), 
+                            "과도한 게임은 일상생활에 지장을 줄 수 있습니다.", 
+                            false
+                        );
+                    }
                     let builder = CreateMessage::new().embed(embed);
 
                     if let Err(e) = channel_id.send_message(&ctx.http, builder).await {

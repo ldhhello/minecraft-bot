@@ -9,4 +9,5 @@ dotenvy = "0.15.7"
 lazy_static = "1.5.0"
 notify = "8.2.0"
 serenity = "0.12.5"
+time = "0.3.45"
 tokio = { version = "1.49.0", features = ["full"] }
