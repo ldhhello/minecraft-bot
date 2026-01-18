@@ -6,7 +6,7 @@ use std::env;
 use std::time::Duration;
 use lazy_static::lazy_static;
 
-use serenity::all::{ChannelId, Ready};
+use serenity::all::{ChannelId, CreateEmbed, CreateEmbedAuthor, CreateMessage, Ready};
 use serenity::async_trait;
 use serenity::model::channel::Message;
 use serenity::prelude::*;
@@ -57,9 +57,22 @@ impl EventHandler for Handler {
             match event {
                 Event::Chat { channel_id, str } => {
                     if str == "엄준식" {
-                        let send_msg = format!("엄준식은 살아있다!");
-                        if let Err(why) = channel_id.say(&ctx.http, send_msg).await {
-                            println!("Error sending message: {why:?}");
+                        // let send_msg = format!("엄준식은 살아있다!");
+                        // if let Err(why) = channel_id.say(&ctx.http, send_msg).await {
+                        //     println!("Error sending message: {why:?}");
+                        // }
+
+                        let embed = CreateEmbed::new()
+                            .author(CreateEmbedAuthor::new("MinecraftBot"))
+                            .title("엄준식")
+                            .description("엄준식은 살아있다!")
+                            .color(0xff0000)
+                            .thumbnail("https://ldh.monster/images/project/dimimonster.png")
+                            .field("접속 시간", "2026년 1월 1일 오전 1시 1분", true);
+                        let builder = CreateMessage::new().embed(embed);
+
+                        if let Err(e) = channel_id.send_message(&ctx.http, builder).await {
+                            println!("Error sending rich message: {e:?}");
                         }
                     }
                 }
@@ -67,7 +80,9 @@ impl EventHandler for Handler {
                     if let Err(why) = channel_id.say(&ctx.http, str).await {
                         println!("Error sending message: {why:?}");
                     }
-                }
+                },
+                Event::PlayerConnected { channel_id, nickname } => todo!(),
+                Event::PlayerDisconnected { channel_id, nickname } => todo!(),
             }
         }
     }
