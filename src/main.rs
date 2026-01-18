@@ -63,6 +63,8 @@ impl EventHandler for Handler {
                         //     println!("Error sending message: {why:?}");
                         // }
 
+                        println!("엄준식 channel_id: {}", channel_id);
+
                         let embed = CreateEmbed::new()
                             .author(CreateEmbedAuthor::new("MinecraftBot"))
                             .title("엄준식")
