@@ -54,20 +54,21 @@ pub async fn file_watcher(sender: mpsc::Sender<Event>) -> Result<(), Box<dyn std
                                 println!("Connect");
                                 let nickname = sp[5];
                                 let nickname = &nickname[0..nickname.len()-1];
-                                let send_msg = format!("{}님이 접속했습니다.", nickname);
-                                sender.send(Event::SendChat { 
+                                let nickname = String::from(nickname);
+                                //let send_msg = format!("{}님이 접속했습니다.", nickname);
+                                sender.send(Event::PlayerConnected { 
                                     channel_id: minecraft_channel_id.into(), 
-                                    str: send_msg,
+                                    nickname,
                                 }).await?;
                             }
                             else if sp[4] == "disconnected:" {
                                 println!("Disconnect");
                                 let nickname = sp[5];
                                 let nickname = &nickname[0..nickname.len()-1];
-                                let send_msg = format!("{}님이 퇴장했습니다.", nickname);
-                                sender.send(Event::SendChat { 
+                                let nickname = String::from(nickname);
+                                sender.send(Event::PlayerDisconnected { 
                                     channel_id: minecraft_channel_id.into(), 
-                                    str: send_msg,
+                                    nickname,
                                 }).await?;
                             }
                         }
