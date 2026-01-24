@@ -72,8 +72,7 @@ impl EventHandler for Handler {
                             .title("엄준식")
                             .description("엄준식은 살아있다!")
                             .color(0xff0000)
-                            .thumbnail("https://ldh.monster/images/project/dimimonster.png")
-                            .field("접속 시간", "2026년 1월 1일 오전 1시 1분", true);
+                            .thumbnail("https://ldh.monster/images/project/dimimonster.png");
                         let builder = CreateMessage::new().embed(embed);
 
                         if let Err(e) = channel_id.send_message(&ctx.http, builder).await {
@@ -119,10 +118,17 @@ impl EventHandler for Handler {
                     if played_time > 0 {
                         embed = embed.field("플레이한 시간", time_to_string(played_time), true);
                     }
-                    if played_time > 60*60 {
+                    if played_time >= 60*60 && played_time < 5*60*60 {
                         embed = embed.field(
                             format!("🚨 게임 중독 경고!"), 
                             "과도한 게임은 일상생활에 지장을 줄 수 있습니다.", 
+                            false
+                        );
+                    }
+                    else if played_time >= 5*60*60 {
+                        embed = embed.field(
+                            format!("🚨 게임 중독 경고!"),
+                            "5시간 이상 플레이하셨습니다. 당신은 엄준식입니까?",
                             false
                         );
                     }
